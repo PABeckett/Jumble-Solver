@@ -3,6 +3,8 @@ Solves the jumble puzzle found in many newspapers. Based on the format of the pu
 
 Feel free to use my code to solve jumble puzzles on your own, but you may not sell my code without my permission.
 
+Add components.jar to the build path an as external JAR.
+
 Running the jumbleExec.java file will execute the code. wordRotor.java is a helper class that is needed but is not executable on its own. All classes were made in Eclipse, so the reader may wish to comment out package names if they are using a different IDE.
 
 To input a jumble puzzle, you will need to edit three files, all of which can be found in the 'data' directory:
