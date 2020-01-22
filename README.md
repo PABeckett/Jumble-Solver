@@ -1,9 +1,11 @@
 # Jumble-Solver
 Solves the jumble puzzle found in many newspapers. Based on the format of the puzzle by David L. Hoyt and Jeff Knurek (all puzzle credit goes to them). For help setting up the solver, search "Hoyt Knurek Jumble" on the internet.
 
-Feel free to use my code to solve jumble puzzles on your own, but you may not sell my code without my permission.
+Feel free to use my code to solve jumble puzzles on your own, but you may not sell my code without my permission. If you reference any parts of this project academically, please reference appropriately or, if you are not allowed to reference any material, please turn back now.
 
 Add components.jar to the build path an as external JAR.
+
+//userInput soon
 
 Running the jumbleExec.java file will execute the code. wordRotor.java is a helper class that is needed but is not executable on its own. All classes were made in Eclipse, so the reader may wish to comment out package names if they are using a different IDE.
 
