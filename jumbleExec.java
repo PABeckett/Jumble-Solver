@@ -1,58 +1,94 @@
 package jumbleSolver;
 
+import java.util.Scanner;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import components.map.Map;
 import components.map.MapOnHashTable;
-import components.map.Map.Pair;
 import components.simplereader.SimpleReader;
 import components.simplereader.SimpleReader1L;
-import components.simplewriter.SimpleWriter;
-import components.simplewriter.SimpleWriter1L;
 
 /**
- * This class solves the jumble puzzle provided in many newspapers. The user
- * must edit three files, "jumbleInputList" (scrambled words) "jumbleCharsToUse"
- * (characters which will becom final sentence) and "jumbleAnswerFormat" (the
- * amount of words/letters per word in the final sentence.) The latter two
- * should be only 1's and 0's, with a 1 meaning 'use this character' or 'there
- * is a character here' while 0 means 'don't use this character' or 'there is a
- * space here'.
+ * JumbleSolver now operates in the console and only depends on the english
+ * words file. A second file can be used to speed it up, but no more input files
+ * are needed.
  * 
- * @author Parker Beckett, 01/2020
+ * This class solves the Jumble puzzle by David Hoyt and Rob Knurek. Inputs must
+ * take the following form:
+ * 
+ * When prompted for four jumbled words, enter them as you see in the puzzle yet
+ * be sure to capitalize letters which you see in boxes that are outlined or
+ * circled.
+ * 
+ * When prompted for an answer format, enter a 1 where a word has a letter and a
+ * 0 where there is no letter. For example, an input of [][][] [][][][]
+ * [][][][], three boxes followed by four and then another four, is represented
+ * as 011101111011110. Note the leading and trailing zeroes.
+ * 
+ * Hyphenated puzzles tend to be puns and wordplay so this class performs poorly
+ * when solving them.
+ * 
+ * More restrictive english words would be ideal.
+ * 
+ * @author Parker Beckett, 01/2020 -> v1.1
  */
 public class jumbleExec {
 
 	static wordRotor[] words;
-	static boolean partOneError = false;
-	static Map<List<Character>, String> uniqueAna = new MapOnHashTable<List<Character>, String>();
-	final static Map<List<Character>, String> partOneSolnMap = buildUniqueMap("data/words_english.txt");
-	final static Map<String, Integer> wordMap = buildTotalMap("data/words_english.txt");
-	final static Map<Integer, List<String>> partTwoMap = new MapOnHashTable<Integer, List<String>>();
+	final static HashSet<String> wordMap = buildTotalMap("data/words_english.txt");
 	static Map<Integer, List<String>> trimmedMap = new MapOnHashTable<Integer, List<String>>();
 	static List<ArrayList<String>> solnList = new ArrayList<ArrayList<String>>();
 	static List<Character> availChar = new ArrayList<Character>();
+	static Map<List<Character>, String> cheapMap = shortCutMap("data/jumbleValidPartOne");
+	static List<String> inputWords = new ArrayList<String>();
+	static List<String> charsToUse = new ArrayList<String>();
+	static String answerFormat;
+
+//	final static Map<List<Character>, String> anaMap = buildUniqueMap("data/words_english.txt");
+//	/**
+//	 * Initializes a map of words with no anagrams, used to unscramble initial
+//	 * words. Commented out to avoid conflict with shortcutMap.
+//	 * 
+//	 * @param fileIn a file containing all words in the english language
+//	 * @return a map populated only by words which have no anagrams
+//	 */
+//	public static Map<List<Character>, String> buildUniqueMap(String fileIn) {
+//		HashSet<List<Character>> dupSet = new HashSet<List<Character>>();
+//		Map<List<Character>, String> interDict = new MapOnHashTable<List<Character>, String>();
+//		SimpleReader textIn = new SimpleReader1L(fileIn);
+//		while (!textIn.atEOS()) {
+//			String word = textIn.nextLine();
+//			List<Character> chars = insertionSort(word);
+//			if (!interDict.hasKey(chars) && !dupSet.contains(chars)) {
+//				if (chars.size() > 4 && chars.size() < 7)
+//					interDict.add(chars, word);
+//				dupSet.add(chars);
+//			} else if (interDict.hasKey(chars)) {
+//				interDict.remove(chars);
+//			}
+//		}
+//		textIn.close();
+//		return interDict;
+//	}
 
 	/**
-	 * Initializes a map of words with no anagrams, used to unscramble initial
-	 * words.
+	 * Makes use of the fact that jumble words are only ever five or six words long
+	 * and only have one anagram to take a shortcut to the map needed in part one.
 	 * 
-	 * @param fileIn a file containing all words in the english language
-	 * @return a map populated only by words which have no anagrams
+	 * @param fileIn a file containing english words that have no anagrams and
+	 *               either five or six letters long
+	 * @return a map populated only by valid jumble words, saving time on map
+	 *         construction
 	 */
-	public static Map<List<Character>, String> buildUniqueMap(String fileIn) {
+	public static Map<List<Character>, String> shortCutMap(String fileIn) {
 		Map<List<Character>, String> interDict = new MapOnHashTable<List<Character>, String>();
-		SimpleReader textIn = new SimpleReader1L(fileIn);
-		while (!textIn.atEOS()) {
-			String word = textIn.nextLine();
-			List<Character> chars = insertionSort(word);
-			if (!interDict.hasKey(chars))
-				interDict.add(chars, word);
-			else {
-				interDict.remove(chars);
-			}
+		SimpleReader read = new SimpleReader1L(fileIn);
+		while (!read.atEOS()) {
+			String str = read.nextLine();
+			interDict.add(insertionSort(str), str);
 		}
-		textIn.close();
+		read.close();
 		return interDict;
 	}
 
@@ -62,17 +98,15 @@ public class jumbleExec {
 	 * @param fileIn a file containing all words in the english language
 	 * @return a map populated by every english word
 	 */
-	public static Map<String, Integer> buildTotalMap(String fileIn) {
-		Map<String, Integer> interDict = new MapOnHashTable<String, Integer>();
+	public static HashSet<String> buildTotalMap(String fileIn) {
+		HashSet<String> interSet = new HashSet<String>();
 		SimpleReader read = new SimpleReader1L(fileIn);
-		int count = 0;
 		while (!read.atEOS()) {
 			String word = read.nextLine();
-			interDict.add(word, count);
-			count++;
+			interSet.add(word);
 		}
 		read.close();
-		return interDict;
+		return interSet;
 	}
 
 	/**
@@ -108,9 +142,14 @@ public class jumbleExec {
 	 */
 	public static String unscramble(String word) {
 		List<Character> chars = insertionSort(word);
-		if (partOneSolnMap.hasKey(chars))
-			return partOneSolnMap.value(chars);
-		return "more than one solution";
+		if (cheapMap.hasKey(chars))
+			return cheapMap.value(chars);
+//		if (anaMap.hasKey(chars))
+//			return anaMap.value(chars);
+		String error = "";
+		for (int i = 0; i < word.length(); i++)
+			error += 'x';
+		return error;
 	}
 
 	/**
@@ -122,59 +161,47 @@ public class jumbleExec {
 	 * @return a list of characters that encompasses each character used in the
 	 *         solution
 	 */
-	public static List<Character> getAvailChar(String fileWords, String filePattern) {
+	public static List<Character> getAvailChar(List<String> unscrambled, List<String> pattern) {
 		List<Character> availChar = new ArrayList<Character>();
-		SimpleReader readWords = new SimpleReader1L(fileWords);
-		SimpleReader readPattern = new SimpleReader1L(filePattern);
-		while (!readWords.atEOS()) {
-			String word = readWords.nextLine();
-			String pattern = readPattern.nextLine();
-			for (int i = 0; i < pattern.length(); i++)
-				if (pattern.charAt(i) == '1')
-					availChar.add(word.charAt(i));
+		for (int i = 0; i < unscrambled.size(); i++) {
+			for (int j = 0; j < unscrambled.get(i).length(); j++) {
+				if (pattern.get(i).charAt(j) == '1')
+					availChar.add(unscrambled.get(i).charAt(j));
+			}
 		}
-		readWords.close();
-		readPattern.close();
 		return availChar;
 	}
 
 	/**
 	 * Solves part one (unscrambling the four initial words) while also initializing
-	 * instance variables necessary to solving part two (constructing solution
-	 * sentence).
+	 * instance variables necessary to solving part two (ascertaining characters).
 	 * 
 	 * @param fileIn  a file containing words to be unscrambled
 	 * @param fileOut a file containing the unscrambled words
 	 */
-	public static void solvePartOne(String fileIn, String fileOut) {
-		SimpleReader read = new SimpleReader1L(fileIn);
-		SimpleWriter write = new SimpleWriter1L(fileOut);
-		while (!read.atEOS()) {
-			String word = read.nextLine();
+	public static List<String> solvePartOne() {
+		List<String> unscrambled = new ArrayList<String>();
+		for (String word : inputWords) {
 			String soln = unscramble(word);
-			if (soln.equals("more than one solution"))
-				partOneError = true;
-			write.println(soln);
+			unscrambled.add(soln);
 		}
-		List<Character> chars = getAvailChar("data/jumblePartOneSolns", "data/jumbleCharsToUse");
-		read.close();
-		write.close();
-		availChar = chars;
+		availChar = getAvailChar(unscrambled, charsToUse);
+		return unscrambled;
 	}
 
 	/**
 	 * Eliminates words from the map of English words that contain a character that
-	 * is not allowed.
+	 * is not allowed. Also organizes words by their size for easier permutation.
 	 * 
 	 * @param chars a list of characters which defines the new map
-	 * @return a map only contatining words which do not contain any characters that
+	 * @return a map only containing words which do not contain any characters that
 	 *         are not defined by the parameter
 	 */
-	public static Map<Integer, List<String>> trimChars(List<Character> chars) {
+	public static Map<Integer, List<String>> trimChars(HashSet<Character> chars) {
 		Map<Integer, List<String>> solnMap = new MapOnHashTable<Integer, List<String>>();
-		for (Pair<String, Integer> pair : wordMap) {
+		for (String s : wordMap) {
 			boolean validPair = true;
-			String str = pair.key();
+			String str = s;
 			for (int i = 0; i < str.length(); i++) {
 				char c = str.charAt(i);
 				if (!chars.contains(c)) {
@@ -197,21 +224,17 @@ public class jumbleExec {
 	}
 
 	/**
-	 * Uses a user-supplied file to determine the structure of the solution sentence
-	 * (how many words, length of each word).
-	 * 
-	 * @param layoutFile a file denoting the amount of words in the solution as well
-	 *                   as the number of characters per word
+	 * Determines the structure of the solution sentence (how many words, length of
+	 * each word). Uses a user-defined field.
+	 *
 	 * @return an integer list that represents the words of the solution, with the
 	 *         value at each index corresponding to the length of that word
 	 */
-	public static List<Integer> sentenceStruct(String layoutFile) {
+	public static List<Integer> sentenceStruct() {
 		List<Integer> sentForm = new ArrayList<Integer>();
-		SimpleReader findWords = new SimpleReader1L(layoutFile);
-		String format = findWords.nextLine();
 		int counter = 0;
-		for (int i = 0; i < format.length(); i++) {
-			char c = format.charAt(i);
+		for (int i = 0; i < answerFormat.length(); i++) {
+			char c = answerFormat.charAt(i);
 			if (c == '1')
 				counter++;
 			else if (counter != 0) {
@@ -219,7 +242,6 @@ public class jumbleExec {
 				counter = 0;
 			}
 		}
-		findWords.close();
 		return sentForm;
 	}
 
@@ -322,34 +344,68 @@ public class jumbleExec {
 	/**
 	 * Solves part two (reconstructing final answer sentence).
 	 * 
-	 * @param fileIn the answer format for the puzzle
+	 * @param fileIn  the answer format for the puzzle
 	 * @param fileOut a list of potential solutions
 	 */
-	public static void solvePartTwo(String fileIn, String fileOut) {
-		List<Integer> format = sentenceStruct(fileIn);
-		trimChars(availChar);
+	public static List<ArrayList<String>> solvePartTwo() {
+		List<Integer> format = sentenceStruct();
+		HashSet<Character> availChars = new HashSet<Character>();
+		for (Character c : availChar)
+			availChars.add(c);
+		trimChars(availChars);
 		List<ArrayList<String>> wordsToPerm = validWords(format);
 		constructSentRotor(wordsToPerm);
 		permuteRecurse(0, words);
-		SimpleWriter out = new SimpleWriter1L(fileOut);
-		for (ArrayList<String> s : solnList)
-			out.println(s);
-		out.close();
-		return;
+		return solnList;
 	}
 
 	/**
-	 * Driver function to solve puzzle and time algorithms
+	 * Driver function to solve puzzle and time algorithms.
 	 * 
 	 * @param args N/A
 	 */
 	public static void main(String[] args) {
+		Scanner readIn = new Scanner(System.in);
+		System.out.println("ENTER THE FOUR JUMBLED WORDS" + "\n" + "WITH CAPITALS AT THE CIRCLED SQUARES" + "\n");
+		for (int i = 0; i < 4; i++) {
+			StringBuilder s = new StringBuilder();
+			String str = readIn.nextLine();
+			inputWords.add(str.toLowerCase());
+			for (int j = 0; j < str.length(); j++) {
+				Character c = str.charAt(j);
+				if (c.compareTo('a') < 0) {
+					s.append('1');
+				} else
+					s.append('0');
+			}
+			charsToUse.add(s.toString());
+		}
+		System.out.println("\n" + "working..." + "\n");
 		long startOne = System.nanoTime();
-		solvePartOne("data/jumbleInputList", "data/jumblePartOneSolns");
+
+		List<String> list = solvePartOne();
+		System.out.println(list);
 		long partOneDone = System.nanoTime() - startOne;
+		for (String s : list)
+			if (s.charAt(1) == 'x' && s.charAt(2) == 'x') {
+				System.out.println("\n" + "JUMBLE WORDS MUST BE ANAGRAMS" + "\n" + "\n" + "exiting...");
+				readIn.close();
+				return;
+			}
+		System.out.println("\n" + "ENTER THE ANSWER FORMAT" + "\n");
+		answerFormat = readIn.nextLine();
+		System.out.println("\n" + "working..." + "\n");
 		long startTwo = System.nanoTime();
-		solvePartTwo("data/jumbleAnswerFormat", "data/jumblePartTwoSoln");
+		List<ArrayList<String>> solnList = (solvePartTwo());
 		long partTwoDone = System.nanoTime() - startTwo;
-		System.out.println("part One mS: " + partOneDone / (double)1000000 + "\n" + "part Two mS: " + partTwoDone / (double)1000000);
+		if (solnList.size() == 0) {
+			System.out.println("\n" + "SOLUTION MUST BE MADE UP OF PROPER WORDS" + "\n" + "exiting...");
+
+		}
+		for (ArrayList<String> printList : solnList)
+			System.out.println(printList);
+		readIn.close();
+		System.out.println("part One mS: " + partOneDone / (double) 1000000 + "\n" + "part Two mS: "
+				+ partTwoDone / (double) 1000000);
 	}
 }
